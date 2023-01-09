@@ -1,15 +1,13 @@
 #include <stdio.h>
-
+#include <stdint.h>
 
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 
-
 #define Nk 4
 #define Nb 4
 #define Nr 10
-
 
     u32 Rcon[10] ={
 		0x01000000,
@@ -60,6 +58,16 @@ typedef unsigned int u32;
 		 {0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d}};	
 
 
+u32 sub_word(u32 in_word)
+{
+    // Applique la S-Box sur un mot de 4 octets
+    u8 *bytes = (u8*)&in_word;
+    for (int i = 0; i < 4; i++)
+    {
+        bytes[i] = s_box[bytes[i] / 16][bytes[i] % 16];
+    }
+    return in_word;
+}
 
 void display_inout(char *str, u8 array[16])
 {
@@ -100,6 +108,60 @@ void display_state(u8 state[4][4])
 	for (r=0; r<4; r++)
 	  printf("0x%02X 0x%02X 0x%02X 0x%02X\n", state[r][0], state[r][1], state[r][2], state[r][3]);
 }
+u8 xtime(u8 a)
+{
+  return (a << 1) ^ (a&0x80 ? 0x1b : 0);
+}
+u8 GF256_mult(u8 a, u8 b)
+{
+  u8 p = 0;
+  while (b)
+  {
+    if (b & 1)
+      p ^= a;
+    b >>= 1;
+    a = xtime (a);
+  }
+  return p;
+}
+void shiftRows(u8 state_in [4][4],u8 state_out [4][4])
+{
+	u8 c,r;
+    if(state_in==state_out)
+    {
+        printf("Vous avez fourni le meme tab deux fois en arg, il faut choisir deux tabs disctins ! (aucune transformation n'est faite par shiftRows) \n");
+        return;
+    }
+    for (c=0; c<4; c++)
+      for (r=1; r<4; r++)
+        state_out[r][c] = state_in[r][(c+r)%4];
+}
+
+void invShiftRows(u8 state_in [4][4],u8 state_out [4][4])
+{
+	u8 c,r;
+    if(state_in==state_out)
+    {
+        printf("Vous avez fourni le meme tab deux fois en arg, il faut choisir deux tabs disctins ! (aucune transformation n'est faite par invShiftRows) \n");
+        return;
+    }
+    for (c=0; c<4; c++)
+      for (r=1; r<4; r++)
+        state_out[r][(c+r)%4] = state_in[r][c];
+}
+void InvSubBytes(u8 in_state[4][4], u8 out_state[4][4])
+{
+    int i,j;
+    u8 x,y;
+    for(i=0;i<4;i++){
+        for(j=0;j<4;j++){
+            x=in_state[i][j]>>4;
+            y=in_state[i][j]%16;
+            out_state[i][j]=inv_s_box[x][y];
+        }
+    }
+}
+
 
 void Cipher(u8 in[4*Nb], u8 out[4*Nb], u32 sub_key[Nb*(Nr+1)])
 {
@@ -114,7 +176,7 @@ void Cipher(u8 in[4*Nb], u8 out[4*Nb], u32 sub_key[Nb*(Nr+1)])
 	    SubBytes(state);
 	    ShiftRows(state);
 	    MixColumns(state);
-	    AddRoundKey(state, sub_key, round*Nb, (round+1)*Nb-1);
+	    AddRoundKey(state, sub_key, round*Nb, (round+1)*Nb-1);	
 	}	
 
 	SubBytes(state);
@@ -135,18 +197,17 @@ void InvCipher(u8 in[4*Nb], u8 out[4*Nb], u32 sub_key[Nb*(Nr+1)])
     for (round = Nr-1; round > 0; round--)
     {
         InvShiftRows(state);
-        InvSubBytes(state);
+        //InvSubBytes(state);
         AddRoundKey(state, sub_key, round*Nb, (round+1)*Nb-1);
         InvMixColumns(state);
     }
 
     InvShiftRows(state);
-    InvSubBytes(state);
+    //InvSubBytes(state);
     AddRoundKey(state, sub_key, 0, Nb-1);
 
 	state2output(state,out);
 }
-
 
 void main(void)
 {
@@ -169,6 +230,7 @@ void main(void)
   
   InvCipher(ciphered, plained, sub_key);    
   display_inout("plained = \0", plained);
+  printf("Le resultat de GF256 : %x\n",GF256_mult(0x57,0x13));
 }
 
 		 
