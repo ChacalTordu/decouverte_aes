@@ -61,12 +61,40 @@ typedef unsigned int u32;
 u32 sub_word(u32 in_word)
 {
     // Applique la S-Box sur un mot de 4 octets
-    u8 *bytes = (u8*)&in_word;
+    u8 byte;
+    u8 MSB, LSB;
+    u32 out_word;
     for (int i = 0; i < 4; i++)
     {
-        bytes[i] = s_box[bytes[i] / 16][bytes[i] % 16];
+        byte = (in_word >> (i * 8)) & 0xFF;
+        LSB = byte & 0xF;
+        MSB = (byte >> 4) & 0xF;
+        out_word |= ((s_box[MSB][LSB]) << (i*8));
     }
-    return in_word;
+    return out_word;
+}
+void SubBytes(u8 input[16],u8 out_subbytes[16])
+{   int x,y;
+    for(int i=0;i<16;i++)
+    {
+      x=(input[i]&0xf0)>>4;
+      y=input[i]&0x0f;
+
+      out_subbytes[i]=s_box[x][y];
+
+    }
+}
+
+void InvSubBytes(u8 input[16],u8 out_subbytes[16])
+{   int x,y;
+    for(int i=0;i<16;i++)
+    {
+      x=(input[i]&0xf0)>>4;
+      y=input[i]&0x0f;
+
+      out_subbytes[i]=inv_s_box[x][y];
+
+    }
 }
 
 void display_inout(char *str, u8 array[16])
@@ -149,6 +177,7 @@ void invShiftRows(u8 state_in [4][4],u8 state_out [4][4])
       for (r=1; r<4; r++)
         state_out[r][(c+r)%4] = state_in[r][c];
 }
+
 void InvSubBytes(u8 in_state[4][4], u8 out_state[4][4])
 {
     int i,j;
@@ -162,7 +191,6 @@ void InvSubBytes(u8 in_state[4][4], u8 out_state[4][4])
     }
 }
 
-
 void Cipher(u8 in[4*Nb], u8 out[4*Nb], u32 sub_key[Nb*(Nr+1)])
 {
 	unsigned char state[4][Nb];
@@ -173,13 +201,13 @@ void Cipher(u8 in[4*Nb], u8 out[4*Nb], u32 sub_key[Nb*(Nr+1)])
 
 	for (round = 1; round < Nr; round++)
 	{
-	    SubBytes(state);
+	    //SubBytes(state);
 	    ShiftRows(state);
 	    MixColumns(state);
 	    AddRoundKey(state, sub_key, round*Nb, (round+1)*Nb-1);	
 	}	
 
-	SubBytes(state);
+	//SubBytes(state);
 	ShiftRows(state);
 	AddRoundKey(state, sub_key, Nr*Nb, (Nr+1)*Nb-1);
 
