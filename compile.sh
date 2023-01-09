@@ -1,2 +1,2 @@
-gcc -o main aes.begin.c
+gcc -o main aesbegin.c
 ./main 
